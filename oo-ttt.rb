@@ -1,5 +1,6 @@
 class Board
   attr_accessor :cells, :board
+  attr_reader :cell_map
 
   def initialize
     @board =
@@ -28,19 +29,57 @@ class Board
     end
   end
 
+  def clear_board
+    self.cell_map.keys.each { |k| self.board[k] = " " }
+
   def to_s
     return self.board
   end
 end
 
 class Player
+  attr_accessor :name
+
+  def intialize(name, mark='X')
+    @name = name
+    @mark = mark
+  end
+
+  def to_s
+    return "#{name}"
+  end
 end
 
-class HumanPlayer
+class HumanPlayer < Player
+  def intialize(name, mark='X')
+    super(name, mark)
+  end
+
+  def choose
+  end
 end
 
-class BotPlayer
+class BotPlayer < Player
+  def initialize(name, mark='O')
+    super(name, mark)
+  end
+
+  def choose
+  end
 end
 
 class Game
+  attr_accessor :human, :bot, :board
+
+  def intialize(human, bot, board)
+    @human = human
+    @bot = bot
+    @board = board
+  end
+
+  def run
+    while true
+      break
+    end
+  end
 end
