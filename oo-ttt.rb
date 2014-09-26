@@ -104,9 +104,9 @@ class AI
   def winning_move_avail?(board, mark)
     # if the bot wants to find a blocking move against its opponent,
     # it passes its own mark to blocking_move_avail, and that method
-    # swaps the bot's mark for its opponent's. Thus, to find a
-    # _winning_ move for the bot, it looks for a move that would block
-    # itself.
+    # swaps the bot's mark for its opponent's (in order to look up
+    # that player's occupancy profile). Thus, to find a _winning_ move
+    # for itself, the bot looks for a move that would block itself.
     blocking_move_avail?(board, mark == 'X' ? 'O' : 'X')
   end
 end
