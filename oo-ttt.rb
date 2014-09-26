@@ -98,6 +98,8 @@ class BotPlayer
     end
   end
 
+  ## CONSIDER: if i pass the board to these functions as an argument,
+  ## i don't have to have the board residing in this class.
   def blocking_move_avail?
     opponent_mark = self.mark == 'X' ? 'O' : 'X'
     closed = self.board.occupied_by(opponent_mark)
@@ -135,11 +137,26 @@ end
 class Game
   attr_accessor :human, :bot, :board
 
-  def initialize(human_name, human_mark, bot_name)
+  def initialize()
+    data = greet()
     @board = Board.new()
-    @human = HumanPlayer.new(human_name, human_mark)
-    @bot = BotPlayer.new(bot_name, human_mark == 'X' ? 'O' : 'X', @board)
+    @human = HumanPlayer.new(data[0], data[1])
+    @bot = BotPlayer.new("Bot", data[1] == 'X' ? 'O' : 'X', @board)
     @board = board
+  end
+
+  def greet
+    puts "Tic-Tac-Toe"
+    puts ""
+    puts "Your name?"
+    name = gets.chomp.capitalize
+    puts "Will you play as X or O?"
+    mark = gets.chomp
+    while mark != 'O' && mark != 'X'
+      puts "Eh? Will you play as X or O?"
+      mark = gets.chomp.upcase
+    puts "Good luck!"
+    return name, mark
   end
 
   def winner?(player=nil)
@@ -208,9 +225,9 @@ class Game
       display_board()
 
       if winner?(self.human)
-        puts "#{human.name} has won!}"
+        puts "#{human.name} has won!"
       elsif winner?(self.bot)
-        puts "#{bot.name} has won!}"
+        puts "#{bot.name} has won!"
       else
         puts "Tie!"
       end
@@ -225,4 +242,4 @@ class Game
   end
 end
 
-Game.new("Mark", "X", "Bot").run_game
+Game.new().run_game
