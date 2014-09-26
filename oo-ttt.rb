@@ -1,7 +1,7 @@
 require 'pry'
 
 class Board
-  attr_accessor :cells, :board
+  attr_accessor :cells, :board, :adjacent
   attr_reader :cell_map
 
   def initialize
@@ -21,6 +21,11 @@ class Board
     @cell_map =
       {1 => 35, 2 => 45, 3 => 55, 4 => 159, 5 => 169,
       6 => 179, 7 => 283, 8 => 293, 9 => 303}
+    @adjacent =
+      {[1,2] => 3, [2,3] => 1, [4,5] => 6, [5,6] => 4, [7,8] => 9, [8,9] => 7,
+      [1,4] => 7, [2,5] => 8, [3,6] => 9, [4,7] => 1, [5,8] => 2, [6,9] => 3,
+      [1,5] => 9, [5,9] => 1, [3,5] => 7, [5,7] => 3, [1,7] => 4, [2,8] => 5,
+      [3,9] => 6, [1,3] => 2, [4,6] => 5, [7,9] => 8, [1,9] => 5, [3,7] => 5}
   end
 
   def place_mark(cell, mark)
@@ -77,35 +82,18 @@ class HumanPlayer
   end
 end
 
-class BotPlayer
-  attr_accessor :name, :moves, :mark, :board, :adjacent
-
-  def initialize(name, mark='O', board)
-    @name = name
-    @mark = mark
-    @moves = []
-    @board = board
-    @adjacent =
-      {[1,2] => 3, [2,3] => 1, [4,5] => 6, [5,6] => 4, [7,8] => 9, [8,9] => 7,
-      [1,4] => 7, [2,5] => 8, [3,6] => 9, [4,7] => 1, [5,8] => 2, [6,9] => 3,
-      [1,5] => 9, [5,9] => 1, [3,5] => 7, [5,7] => 3, [1,7] => 4, [2,8] => 5,
-      [3,9] => 6, [1,3] => 2, [4,6] => 5, [7,9] => 8, [1,9] => 5, [3,7] => 5}
-  end
-
-  def center_free?
-    if self.board.open_cells.include?(5)
+class AI
+  def center_free?(board)
+    if board.open_cells.include?(5)
       return true
     end
   end
 
-  ## CONSIDER: if i pass the board to these functions as an argument,
-  ## i don't have to have the board residing in this class.
-  def blocking_move_avail?
-    opponent_mark = self.mark == 'X' ? 'O' : 'X'
-    closed = self.board.occupied_by(opponent_mark)
-    open = self.board.open_cells()
+  def blocking_move_avail?(board, mark)
+    closed = board.occupied_by(mark == 'X' ? 'O' : 'X')
+    open = board.open_cells()
     result = nil
-    self.adjacent.each do |k,v|
+    board.adjacent.each do |k,v|
       if closed.include?(k[0]) && closed.include?(k[1]) && open.include?(v)
         result = v
       end
@@ -113,17 +101,41 @@ class BotPlayer
     result
   end
 
-  def choose(open_cells)
-    if center_free?
+  def winning_move_avail?(board, mark)
+    # if the bot wants to find a blocking move against its opponent,
+    # it passes its own mark to blocking_move_avail, and that method
+    # swaps the bot's mark for its opponent's. Thus, to find a
+    # _winning_ move for the bot, it looks for a move that would block
+    # itself.
+    blocking_move_avail?(board, mark == 'X' ? 'O' : 'X')
+  end
+end
+
+class BotPlayer < AI
+  attr_accessor :name, :moves, :mark, :board, :adjacent
+
+  def initialize(name, mark='O')
+    @name = name
+    @mark = mark
+    @moves = []
+  end
+
+  def choose(board)
+    if center_free?(board)
       self.moves << 5
       return 5
     end
-    b = blocking_move_avail?
+    w = winning_move_avail?(board, self.mark)
+    if w
+      self.moves << w
+      return w
+    end
+    b = blocking_move_avail?(board, self.mark)
     if b
       self.moves << b
       return b
     else
-      choice = open_cells.sample
+      choice = board.open_cells.sample
       self.moves << choice
       return choice
     end
@@ -135,13 +147,13 @@ class BotPlayer
 end
 
 class Game
-  attr_accessor :human, :bot, :board
+  attr_accessor :human, :bot, :board, :data
 
   def initialize()
-    data = greet()
+    @data = greet()
     @board = Board.new()
-    @human = HumanPlayer.new(data[0], data[1])
-    @bot = BotPlayer.new("Bot", data[1] == 'X' ? 'O' : 'X', @board)
+    @human = HumanPlayer.new(@data[0], @data[1])
+    @bot = BotPlayer.new("Bot", data[1] == 'X' ? 'O' : 'X')
     @board = board
   end
 
@@ -156,6 +168,7 @@ class Game
       puts "Eh? Will you play as X or O?"
       mark = gets.chomp.upcase
     puts "Good luck!"
+    end
     return name, mark
   end
 
@@ -184,7 +197,7 @@ class Game
       return 1
     else
       if player.name == self.bot.name
-        self.board.place_mark(player.choose(self.board.open_cells()), player.mark)
+        self.board.place_mark(player.choose(self.board),player.mark)
       else
         self.board.place_mark(player.choose(), player.mark)
       end
@@ -203,6 +216,7 @@ class Game
   def display_board
     system 'clear'
     puts self.board
+    puts ""
   end
 
   def run_game
