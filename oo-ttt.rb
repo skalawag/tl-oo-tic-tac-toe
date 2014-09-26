@@ -40,7 +40,11 @@ class Board
   end
 
   def closed_cells
-    (1..9).to_a - closed_cells()
+    (1..9).to_a - open_cells()
+  end
+
+  def occupied_by(mark)
+    self.cell_map.map {|k,v| k if self.board[self.cell_map[k]] == mark}.compact
   end
 
   def to_s
@@ -48,24 +52,13 @@ class Board
   end
 end
 
-class Player
+class HumanPlayer
   attr_accessor :name, :moves, :mark
 
   def initialize(name, mark='X')
     @name = name
     @mark = mark
     @moves = []
-  end
-
-  def to_s
-    return "#{name}"
-  end
-end
-
-class HumanPlayer < Player
-
-  def initialize(name, mark='X')
-    super(name, mark)
   end
 
   def choose
@@ -78,26 +71,74 @@ class HumanPlayer < Player
     self.moves << choice
     choice
   end
+
+  def to_s
+    return "#{name}"
+  end
 end
 
-class BotPlayer < Player
-  def initialize(name, mark='O')
-    super(name, mark)
+class BotPlayer
+  attr_accessor :name, :moves, :mark, :board, :adjacent
+
+  def initialize(name, mark='O', board)
+    @name = name
+    @mark = mark
+    @moves = []
+    @board = board
+    @adjacent =
+      {[1,2] => 3, [2,3] => 1, [4,5] => 6, [5,6] => 4, [7,8] => 9, [8,9] => 7,
+      [1,4] => 7, [2,5] => 8, [3,6] => 9, [4,7] => 1, [5,8] => 2, [6,9] => 3,
+      [1,5] => 9, [5,9] => 1, [3,5] => 7, [5,7] => 3, [1,7] => 4, [2,8] => 5,
+      [3,9] => 6, [1,3] => 2, [4,6] => 5, [7,9] => 8, [1,9] => 5, [3,7] => 5}
+  end
+
+  def center_free?
+    if self.board.open_cells.include?(5)
+      return true
+    end
+  end
+
+  def blocking_move_avail?
+    opponent_mark = self.mark == 'X' ? 'O' : 'X'
+    closed = self.board.occupied_by(opponent_mark)
+    open = self.board.open_cells()
+    result = nil
+    self.adjacent.each do |k,v|
+      if closed.include?(k[0]) && closed.include?(k[1]) && open.include?(v)
+        result = v
+      end
+    end
+    result
   end
 
   def choose(open_cells)
-    choice = open_cells.sample
-    self.moves << choice
-    choice
+    if center_free?
+      self.moves << 5
+      return 5
+    end
+    b = blocking_move_avail?
+    if b
+      self.moves << b
+      return b
+    else
+      choice = open_cells.sample
+      self.moves << choice
+      return choice
+    end
+  end
+
+  def to_s
+    return "#{name}"
   end
 end
 
 class Game
   attr_accessor :human, :bot, :board
 
-  def initialize(human, bot, board)
-    @human = human
-    @bot = bot
+  def initialize(human_name, human_mark, bot_name)
+    @board = Board.new()
+    @human = HumanPlayer.new(human_name, human_mark)
+    @bot = BotPlayer.new(bot_name, human_mark == 'X' ? 'O' : 'X', @board)
     @board = board
   end
 
@@ -158,6 +199,7 @@ class Game
         if run_player(first) == 1
             break
         end
+        display_board()
         if run_player(second) == 1
             break
         end
@@ -183,6 +225,4 @@ class Game
   end
 end
 
-Game.new(HumanPlayer.new("Mark", "X"),
-         BotPlayer.new("Bot", "O"),
-         Board.new()).run_game
+Game.new("Mark", "X", "Bot").run_game
